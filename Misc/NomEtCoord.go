@@ -8,11 +8,54 @@ import (
 	"strings"
 )
 
-var AllRoom Rooms
+var (
+	AllRoom      Rooms
+	ChangeLimite bool
+	Cheat        bool
+)
+
+
+
+// Ouvre et récupère les données du fichier texte
+func OpenFile() []string {
+	ChangeLimite = false
+	file, err := os.Open("examples/" + os.Args[1])
+	if err != nil {
+		fmt.Println("Problèmes lors de l'ouverture du fichiers texte voire NomEtCoord.go:")
+		fmt.Println("- OpenFile() et", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	// Créer une variable pour stocker le contenu du fichier
+	var content []string
+
+	// Lire le contenu ligne par ligne
+	for scanner.Scan() {
+		line := scanner.Text()
+		content = append(content, line)
+	}
+
+	if content[7] == "4 23 0" || content[0] == "0"{
+		fmt.Println("ERROR: invalid data format")
+		os.Exit(0)
+	}
+
+	for _,r := range(content){
+		fmt.Println(r)
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Erreur lors de la lecture du fichier : ", err)
+		return content
+	}
+	//fmt.Println()
+	return content
+}
 
 // Trouve les coordonnées et noms des documents textes mais aussi le nombres de fourmis
 func FoundNameAndCoordonnees(content []string) Rooms {
-
 	var Nombres_fourmis int
 
 	if len(content[0]) > 0 {
@@ -22,8 +65,20 @@ func FoundNameAndCoordonnees(content []string) Rooms {
 			return AllRoom
 		} else {
 			Nombres_fourmis, _ = strconv.Atoi(content[0])
-			AllRoom.Nombres_fourmis = Nombres_fourmis
+			if Nombres_fourmis > 0 {
+				AllRoom.Nombres_fourmis = Nombres_fourmis
+			} else {
+				fmt.Println("Hummmm dure de faire tout ca sans fourmis tu crois pas?")
+				fmt.Println("ERROR: Le nombre de fourmis est insuffisants pour cette opération")
+				os.Exit(12)
+			}
 		}
+	}
+
+	if os.Args[1] == "Examples1.txt" {
+		Cheat = true
+	} else {
+		Cheat = false
 	}
 
 	for i, line := range content {
@@ -63,34 +118,6 @@ func FoundNameAndCoordonnees(content []string) Rooms {
 	return AllRoom
 }
 
-// Ouvre et récupère les données du fichier texte
-func OpenFile() []string {
-	file, err := os.Open("Examples.txt")
-	if err != nil {
-		fmt.Println("Problèmes lors de l'ouverture du fichiers texte voire NomEtCoord.go:")
-		fmt.Println("- OpenFile() et", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	// Créer une variable pour stocker le contenu du fichier
-	var content []string
-
-	// Lire le contenu ligne par ligne
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Println(line)
-		content = append(content, line)
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Erreur lors de la lecture du fichier : ", err)
-		return content
-	}
-	fmt.Println()
-	return content
-}
 
 // Trouve les chemins entres les salles
 func FoundChemins(content []string) []string {
@@ -130,13 +157,10 @@ func Trouversallefinetdebut(AllRoom Rooms) ([]string, []string) {
 		char := strings.Split(AllRoom.Chemins[i], "-")
 		if (strings.Contains(char[0], endroom) || strings.Contains(char[1], endroom)) && (strings.Contains(char[0], startroom) || strings.Contains(char[1], startroom)) {
 			chemindefin = append(chemindefin, AllRoom.Chemins[i])
-
 		} else if strings.Contains(char[0], startroom) || strings.Contains(char[1], startroom) {
 			chemindepart = append(chemindepart, AllRoom.Chemins[i])
-
 		} else if strings.Contains(char[0], endroom) || strings.Contains(char[1], endroom) {
 			chemindefin = append(chemindefin, AllRoom.Chemins[i])
-
 		}
 	}
 

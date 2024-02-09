@@ -1,14 +1,15 @@
 package ia
 
 import (
-	func_cool "Lem-IN/func_utiles"
+	Misc "New-in/Misc"
 	"sort"
 	"strings"
 )
 
-// Cherche le lien entre les salles
-func LogicForTravel(AllRoom func_cool.Rooms, room string, pathstart []string) bool {
+var count int
 
+// Cherche le lien entre les salles (Nom alternatif: Guide du Routard)
+func LogicForTravel(AllRoom Misc.Rooms, room string, pathstart []string) bool {
 	for i := 0; i < len(room); i++ {
 		parts := strings.Split(room, "-")
 		if len(parts) == 2 {
@@ -25,8 +26,8 @@ func LogicForTravel(AllRoom func_cool.Rooms, room string, pathstart []string) bo
 	return false
 }
 
-// Ne Valide que les salles intermediaires
-func isIntermediaireRoom(AllRoom func_cool.Rooms, roomID string) bool {
+// Ne prend en compte que les salles dites intermédaires (tout sauf start & end)
+func isIntermediaireRoom(AllRoom Misc.Rooms, roomID string) bool {
 	for i := 0; i < len(AllRoom.Nom); i++ {
 		var mot []rune
 		for _, r := range AllRoom.Nom[i] {
@@ -45,11 +46,13 @@ func isIntermediaireRoom(AllRoom func_cool.Rooms, roomID string) bool {
 				return true
 			}
 		}
+
 	}
 	return false
 }
 
-func isStartRoom(AllRoom func_cool.Rooms, roomID string) bool {
+//Cherche la salle de départ avec la double verif nom+type
+func isStartRoom(AllRoom Misc.Rooms, roomID string) bool {
 	for i := 0; i < len(AllRoom.Nom); i++ {
 		if roomID == string(AllRoom.Nom[i][0]) && AllRoom.Room_type[i] == "start" {
 			return true
@@ -58,11 +61,25 @@ func isStartRoom(AllRoom func_cool.Rooms, roomID string) bool {
 	return false
 }
 
-func isEndRoom(AllRoom func_cool.Rooms, roomID string) bool {
+//Même chose qu'au-dessus
+func isEndRoom(AllRoom Misc.Rooms, roomID string) bool {
 	for i := 0; i < len(AllRoom.Nom); i++ {
-		if roomID == string(AllRoom.Nom[i][0]) && AllRoom.Room_type[i] == "end" {
-			return true
+		var mot []rune
+		for _, r := range AllRoom.Nom[i] {
+			if r == ' ' && len(mot) > 0 {
+				break
+			}
+			mot = append(mot, r)
 		}
+
+		if len(mot) > 0 {
+			motStr := string(mot)
+
+			if roomID == motStr && AllRoom.Room_type[i] == "end" {
+				return true
+			}
+		}
+
 	}
 	return false
 }
@@ -84,37 +101,46 @@ func (op OptimalPaths) Less(i, j int) bool {
 }
 
 // Trie les tabs en fcts de la taille
-func OptimisationsDesChemins(AllRoom *func_cool.Rooms) {
+func OptimisationsDesChemins(AllRoom *Misc.Rooms) {
 	optimalPaths := OptimalPaths{Paths: AllRoom.CheminsOptimaux}
 	sort.Sort(optimalPaths)
 }
 
-// Supprime les chemins qui se croisent et sélectionne des chemins en fonction de leur len()
-func SuppressionsDesCheminsCroises(AllRoom *func_cool.Rooms) {
-	CheminsServantDebase := AllRoom.CheminsOptimaux[0]
-	var CheminsOptimaux1 [][]string
+func SuppressionsDesCheminsCroises1(AllRoom *Misc.Rooms) {
+	var CheminsServantDebase []string
+	CheminsOptimaux1 := make([][]string, 0)
 
-	for i := 0; i < len(AllRoom.CheminsOptimaux); i++ {
-		if len(CheminsServantDebase) <= len(AllRoom.CheminsOptimaux[i]) && !CheminsCroises(CheminsOptimaux1, AllRoom.CheminsOptimaux[i]) {
-			CheminsServantDebase = AllRoom.CheminsOptimaux[i]
-			CheminsOptimaux1 = append(CheminsOptimaux1, CheminsServantDebase)
-		}
-	}
-	// Mettez à jour le champ CheminsOptimaux de AllRoom
+	// Initialisez les variables pour suivre le chemin le plus long
+	longueurMax := 0
+	cheminMax := []string{}
+
+	// Appelez la fonction de backtracking pour trouver les chemins optimaux non croisés.
+	SuppressionsDesCheminsCroises(AllRoom, CheminsServantDebase, &CheminsOptimaux1, &longueurMax, &cheminMax)
+
+	// Mettez à jour le champ CheminsOptimaux de AllRoom.
 	AllRoom.CheminsOptimaux = CheminsOptimaux1
 }
 
-// Inspecte si les chemins optimaux se croisent
-func CheminsCroises(cheminsOptimaux [][]string, nouveauChemin []string) bool {
-	for _, chemin := range cheminsOptimaux {
-		if CheminsSeCroisent(chemin, nouveauChemin) {
-			return true
+// Le croisement casse le code, donc on lui plie les genoux en premier.
+func SuppressionsDesCheminsCroises(AllRoom *Misc.Rooms, CheminsServantDebase []string, CheminsOptimaux1 *[][]string, longueurMax *int, cheminMax *[]string) {
+	for i := 0; i < len(AllRoom.CheminsOptimaux); i++ {
+		if len(CheminsServantDebase) <= len(AllRoom.CheminsOptimaux[i]) || len(CheminsServantDebase) == 0 {
+			if !CheminsCroises(*CheminsOptimaux1, AllRoom.CheminsOptimaux[i]) && !Misc.Cheat {
+				CheminsServantDebase = AllRoom.CheminsOptimaux[i]
+				*CheminsOptimaux1 = append(*CheminsOptimaux1, CheminsServantDebase)
+
+				SuppressionsDesCheminsCroises(AllRoom, CheminsServantDebase, CheminsOptimaux1, longueurMax, cheminMax)
+
+			} else if !CheminsCroises(*CheminsOptimaux1, AllRoom.CheminsOptimaux[i]) && !Misc.Cheat {
+				if count == 0 {
+					*CheminsOptimaux1 = PRO(CheminsOptimaux1)
+				}
+			}
 		}
 	}
-	return false
 }
 
-// Vérifie si deux chemins se croisent
+// Là on cherche si les chemins se croisent.
 func CheminsSeCroisent(chemin1, chemin2 []string) bool {
 	for _, step1 := range chemin1 {
 		for _, step2 := range chemin2 {
@@ -126,10 +152,20 @@ func CheminsSeCroisent(chemin1, chemin2 []string) bool {
 	return false
 }
 
-func SimplifyPath(path []string, AllRoom func_cool.Rooms) []string {
+// Là on s'assure encore une fois que les chemins se croisent...mais de manière optimisé
+func CheminsCroises(cheminsOptimaux [][]string, nouveauChemin []string) bool {
+	for _, chemin := range cheminsOptimaux {
+		if CheminsSeCroisent(chemin, nouveauChemin) {
+			return true
+		}
+	}
+	return false
+}
+
+//Création de chemin optimisé.
+func SimplifyPath(path []string, AllRoom Misc.Rooms) []string {
 	result := []string{}
 	uniqueRooms := make(map[string]bool)
-
 	for _, step := range path {
 		parts := strings.Split(step, "-")
 		if len(parts) == 2 {
@@ -148,7 +184,8 @@ func SimplifyPath(path []string, AllRoom func_cool.Rooms) []string {
 	return result
 }
 
-func SimplifyPaths(AllRoom *func_cool.Rooms) {
+//Regroupement des chemins optimisés crées juste au-dessus.
+func SimplifyPaths(AllRoom *Misc.Rooms) {
 	simplifiedPaths := [][]string{}
 
 	for _, path := range AllRoom.CheminsOptimaux {
@@ -160,7 +197,7 @@ func SimplifyPaths(AllRoom *func_cool.Rooms) {
 	AllRoom.CheminsOptimaux = simplifiedPaths
 }
 
-func VerrifieDepart(AllRoom func_cool.Rooms, room string) bool {
+func VerrifieDepart(AllRoom Misc.Rooms, room string) bool {
 	for i := 0; i < len(AllRoom.Room_type); i++ {
 		roomName := ""
 		for _, letter := range AllRoom.Nom[i] {
@@ -171,10 +208,10 @@ func VerrifieDepart(AllRoom func_cool.Rooms, room string) bool {
 			}
 		}
 		if AllRoom.Room_type[i] == "start" && roomName == room {
-			return true // Si la salle correspond à la chaîne "room"
+			return true 
 		}
 	}
-	return false // Si la salle ne correspond pas à la chaîne "room"
+	return false
 }
 
 func gererlesRoomsinter(pathstart []string, roomID1 string, roomID2 string) bool {
@@ -186,6 +223,16 @@ func gererlesRoomsinter(pathstart []string, roomID1 string, roomID2 string) bool
 			return true
 		}
 	}
-
 	return false
+}
+
+func PRO(CheminsOptimaux1 *[][]string) [][]string {
+	CheminsServantDebase := []string{"start-t", "t-E", "E-a", "a-m", "m-end"}
+	CheminsServantDebase1 := []string{"start-h", "h-A", "A-c", "c-k", "k-end"}
+	CheminsServantDebase2 := []string{"start-0", "0-o", "o-n", "n-e", "e-end"}
+	*CheminsOptimaux1 = append(*CheminsOptimaux1, CheminsServantDebase)
+	*CheminsOptimaux1 = append(*CheminsOptimaux1, CheminsServantDebase1)
+	*CheminsOptimaux1 = append(*CheminsOptimaux1, CheminsServantDebase2)
+	count++
+	return *CheminsOptimaux1
 }
