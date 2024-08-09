@@ -1,5 +1,7 @@
 ***LEM-IN***
 
+![Mon image](assets/img/port_img4.jpg)
+
 Objectives
 
 This project is meant to make you code a digital version of an ant farm.
